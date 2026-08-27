@@ -12,22 +12,43 @@ Faça um passo de cada vez. Cada passo termina com um TESTE: só avance quando e
 
 ## Passo 1. Abrir o projeto e conferir
 
-Abra a pasta do seu projeto do foguete no VS Code, abra o terminal (Terminal > New Terminal) e rode:
+Este repositório já vem com o foguete funcionando. Baixe a pasta (ou clone o repositório), abra no VS Code, abra o terminal (menu Terminal > New Terminal) e rode:
 
 ```bash
+npm install
 npm run dev
 ```
 
-Abra o endereço que aparecer (normalmente http://localhost:5173).
+O `npm install` baixa o Phaser e o Vite; roda só uma vez. O `npm run dev` liga o servidor. Abra o endereço que aparecer no terminal (normalmente http://localhost:5173).
 
 **TESTE, confira as quatro coisas:**
 
-1. O foguete aparece na tela
+1. O foguete aparece na tela e cai até o chão
 2. Segurar espaço faz ele subir; soltar, cair
 3. A chama acende quando o motor liga e apaga quando desliga
 4. As setas esquerda e direita movem o foguete para os lados
 
-Se alguma dessas falhar, conserte antes de continuar. Abra o console do navegador com **F12** e leia a mensagem de erro: ela diz o arquivo e a linha do problema.
+Se alguma falhar, abra o console do navegador com **F12** e leia a mensagem de erro: ela diz o arquivo e a linha do problema.
+
+### Onde fica cada coisa
+
+```
+campo-de-satelites/
+├── index.html              a página que hospeda o jogo
+├── style.css               centraliza o jogo na tela
+├── main.js                 ← É AQUI QUE VOCÊ VAI TRABALHAR
+├── package.json            lista as dependências
+└── public/assets/
+    └── foguete.png         a imagem do foguete (3 quadros)
+```
+
+Abra o `main.js` e leia com calma antes de mexer. Ele tem três partes:
+
+- `preload()` — carrega a imagem do foguete
+- `create()` — monta o foguete, o motor e as setas
+- `update()` — roda 60 vezes por segundo aplicando o empuxo e o movimento lateral
+
+Todo o código que você vai escrever entra nesse arquivo.
 
 ---
 
@@ -161,13 +182,96 @@ Tudo isso você fez no `fimDeJogo()` do Flappy. Consulte e adapte.
 
 ---
 
+## Passo 7. Mostrar o placar na tela
+
+Um jogo sem placar não tem graça: ninguém sabe se jogou bem. Nosso placar vai contar **quantos segundos você sobreviveu**.
+
+São duas partes: primeiro criar o texto, depois fazer ele contar.
+
+### 7.1 Criar o texto
+
+Cole no final do `create()`:
+
+```js
+// --- placar ---
+this.segundos = 0;   // o número que vamos contar
+
+// o texto que mostra esse número na tela
+this.textoPlacar = this.add
+  .text(220, 40, '0s', {
+    fontSize: '36px',
+    color: '#ffffff',
+    fontFamily: 'Arial',
+  })
+  .setOrigin(0.5)   // o ponto (220, 40) é o CENTRO do texto
+  .setDepth(10);    // desenha por cima dos satélites
+```
+
+Repare que são **duas coisas diferentes**:
+
+- `this.segundos` é o **número** (o dado)
+- `this.textoPlacar` é o **objeto de texto** na tela (o desenho)
+
+Mudar o número não muda o desenho sozinho. Nós que temos que mandar o desenho se atualizar. É isso que a próxima parte faz.
+
+O `setDepth(10)` existe porque quem é desenhado por último fica por cima. Como os satélites nascem depois do placar, sem o depth eles passariam na frente do número.
+
+**TESTE:** aparece um `0s` no alto da tela. Ele ainda não conta.
+
+### 7.2 Fazer o tempo passar
+
+Precisamos que alguém conte de segundo em segundo. Você já conhece a ferramenta certa: o **timer**, o mesmo que usamos para criar os satélites. A diferença é o `delay`.
+
+Cole também no final do `create()`:
+
+```js
+// a cada 1000 milissegundos (1 segundo), soma 1 no placar
+this.time.addEvent({
+  delay: 1000,
+  loop: true,
+  callback: () => {
+    if (this.acabou) return;          // parou o jogo? para de contar
+
+    this.segundos = this.segundos + 1;          // muda o NÚMERO
+    this.textoPlacar.setText(this.segundos + 's');  // atualiza o DESENHO
+  },
+});
+```
+
+O `setText()` é o método que troca o conteúdo de um texto já existente na tela. O `+ 's'` gruda a letra s no número, para aparecer `7s` em vez de `7`.
+
+**TESTE:** o número sobe de 1 em 1 enquanto você joga, e congela quando o foguete explode.
+
+**Se o número continuar subindo depois da explosão:** faltou o `if (this.acabou) return;` dentro do callback. O timer não sabe que o jogo acabou; você precisa avisar.
+
+### 7.3 Mostrar o resultado no fim de jogo
+
+No seu método `explodir()`, o texto de fim de jogo já existe. Falta acrescentar o tempo final. Troque a mensagem por algo assim:
+
+```js
+this.add.text(220, 300, 'BOOM!\nvocê sobreviveu ' + this.segundos + ' segundos\nclique para tentar de novo', {
+  fontSize: '24px',
+  color: '#ff4444',
+  fontFamily: 'Arial',
+  align: 'center',
+}).setOrigin(0.5).setDepth(10);
+```
+
+O `\n` quebra a linha, e o `+` junta pedaços de texto com o valor da variável.
+
+**TESTE FINAL:** o placar conta durante o jogo, congela na explosão, e a tela de fim de jogo mostra quantos segundos você aguentou.
+
+---
+
 ## Está pronto quando
 
 - [ ] O satélite foi desenhado por código e está diferente do exemplo
 - [ ] Satélites caem em posições sorteadas
 - [ ] Os satélites que saem da tela são destruídos
 - [ ] Encostar em um satélite explode o foguete e mostra o fim de jogo
-- [ ] Clicar reinicia o jogo
+- [ ] O placar conta os segundos e para quando o jogo acaba
+- [ ] A tela de fim de jogo mostra o tempo final
+- [ ] Clicar reinicia o jogo (e o placar volta a zero)
 
 ---
 
@@ -187,9 +291,16 @@ Teste com outros valores. O que acontece com número negativo?
 
 **3. Chuva mais forte.** Diminua o `delay` do timer e veja o jogo ficar mais difícil. Qual valor deixa o jogo impossível?
 
-**4. Placar de sobrevivência.** Mostre na tela quantos segundos você aguentou. Dica: crie um texto no `create()` e atualize com `setText()`.
+**4. Recorde.** Guarde o melhor tempo e mostre na tela de fim de jogo. O problema: ao reiniciar, o `create()` roda de novo e apaga tudo. A solução é o `registry`, um armário global que sobrevive ao restart:
 
-**5. Seu próprio foguete.** Desenhe um foguete novo e substitua o `foguete.png` (mantenha 3 quadros de 64 por 96, imagem total de 192 por 96).
+```js
+this.registry.set('recorde', valor);   // guarda
+this.registry.get('recorde');          // lê (devolve undefined na primeira vez)
+```
+
+**5. Dificuldade crescente.** A cada 10 segundos, faça os satélites caírem mais rápido. Dica: você já tem um contador de segundos rodando.
+
+**6. Seu próprio foguete.** Desenhe um foguete novo e substitua o `public/assets/foguete.png` (mantenha 3 quadros de 64 por 96, imagem total de 192 por 96).
 
 ---
 
